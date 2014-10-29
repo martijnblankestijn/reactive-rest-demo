@@ -30,7 +30,7 @@ Valid customer usernames are bbb, ccc and ddd. Valid customer ids are 100, 101, 
 The customeroverview is the starting point of the demo and contains one REST-Resource, the customer overview.
 This resources aggregates the three resources of the backend-resources project
 
-The url for the customer overview REST-resource is TBD.
+The url for the customer overview REST-resource is http://localhost:8080/demo-resource/customers/{customerId}.
 
 ## Building and starting
 
