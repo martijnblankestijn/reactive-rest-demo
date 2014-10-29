@@ -1,0 +1,11 @@
+# Used in dependency injection for external configuration of URL
+delete-custom-resource url/backendRestService
+create-custom-resource --restype java.net.URL --factoryclass org.glassfish.resources.custom.factory.URLObjectFactory --description "URL of the application with backend service"  --property="spec=http\://localhost\:9998" url/backendRestService
+
+# To view performance results in FlightRecorder. See licensing agreement of Flight Recorder.
+delete-jvm-options "-XX\:+UnlockCommercialFeatures:-XX\:+FlightRecorder"
+create-jvm-options "-XX\:+UnlockCommercialFeatures:-XX\:+FlightRecorder"
+
+# Increase the server thread pools
+set server.thread-pools.thread-pool.thread-pool-1.max-thread-pool-size=250
+set server.thread-pools.thread-pool.http-thread-pool.max-thread-pool-size=250
