@@ -4,6 +4,7 @@ import nl.ordina.reactive.rest.Sleeper;
 
 import javax.inject.Inject;
 import javax.json.Json;
+import javax.json.JsonArray;
 import javax.json.JsonArrayBuilder;
 import javax.json.JsonObject;
 import javax.ws.rs.GET;
@@ -55,10 +56,11 @@ public class CommunicationResource {
   }
 
   private static String createCommunications(JsonObject... elements) {
-    JsonArrayBuilder combined = of(elements)
-        .collect(Json::createArrayBuilder, JsonArrayBuilder::add, JsonArrayBuilder::add);
+    JsonArray combined = of(elements)
+        .collect(Json::createArrayBuilder, JsonArrayBuilder::add, JsonArrayBuilder::add)
+        .build();
 
-    return mapToString(combined.build());
+    return mapToString(combined);
   }
 
   private static JsonObject build(String type, String value) {
