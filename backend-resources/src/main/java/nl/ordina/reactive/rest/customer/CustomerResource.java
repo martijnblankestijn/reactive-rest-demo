@@ -38,18 +38,17 @@ public class CustomerResource {
 
   private static Map<String, String> createDatabase() {
     Map<String, String> db = new HashMap<>();
-    db.put("bbb", createCustomer(100, "Martin", "Smit"));
-    db.put("ccc", createCustomer(101, "Karel", "Boven"));
-    db.put("ddd", createCustomer(102, "Daan", "Vogel"));
+    db.put("bbb", createCustomer(100, "Martin Smit"));
+    db.put("ccc", createCustomer(101, "Karel Boven"));
+    db.put("ddd", createCustomer(102, "Daan Vogel"));
     return db;
   }
 
-  private static String createCustomer(int id, String firstName, String lastName) {
+  private static String createCustomer(int id, String name) {
     return mapToString(
         createObjectBuilder()
             .add("id", "" + id)
-            .add("firstName", firstName)
-            .add("lastName", lastName)
+            .add("name", name)
             .add("birthDate", of(1850 + id, id % 12 + 1, id % 28).toString())
             .build());
   }
