@@ -1,4 +1,4 @@
-package nl.ordina.reactive.rest;
+package nl.ordina.reactive.rest.config;
 
 import javax.annotation.Resource;
 import javax.enterprise.context.ApplicationScoped;

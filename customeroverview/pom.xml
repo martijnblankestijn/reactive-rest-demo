@@ -15,7 +15,6 @@
 
   <properties>
     <failOnMissingWebXml>false</failOnMissingWebXml>
-    <jersey.version>2.11</jersey.version>
   </properties>
 
   <dependencies>

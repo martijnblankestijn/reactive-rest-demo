@@ -1,4 +1,4 @@
-package nl.ordina.reactive.rest;
+package nl.ordina.reactive.rest.config;
 
 import javax.ws.rs.ApplicationPath;
 import javax.ws.rs.core.Application;

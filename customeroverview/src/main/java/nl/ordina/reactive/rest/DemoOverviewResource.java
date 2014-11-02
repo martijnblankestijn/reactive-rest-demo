@@ -1,69 +1,74 @@
 package nl.ordina.reactive.rest;
 
+import nl.ordina.reactive.rest.domain.Communication;
+import nl.ordina.reactive.rest.domain.Contract;
+import nl.ordina.reactive.rest.domain.Customer;
+import nl.ordina.reactive.rest.domain.CustomerOverview;
+
 import javax.inject.Inject;
-import javax.json.JsonArray;
-import javax.json.JsonObject;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
+import javax.ws.rs.Produces;
 import javax.ws.rs.client.WebTarget;
-import java.util.logging.Logger;
 
-import static java.lang.invoke.MethodHandles.lookup;
+import static java.time.LocalDateTime.now;
 import static java.util.logging.Level.FINEST;
 import static java.util.logging.Logger.getLogger;
+import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 
 @Path("customers")
 public class DemoOverviewResource {
   @Inject WebTarget backendServices;
-  @Inject Joiner joiner;
 
-  @GET @Path("{username}") public JsonObject retrieve(
+  @GET @Path("{username}") @Produces(APPLICATION_JSON)
+  public CustomerOverview retrieve(
       @PathParam("username") String username) {
 
-    JsonObject customer = getCustomerInfo(username);
+    Customer customer = getCustomerInfo(username);
     auditLog(customer);
 
-    String customerId = customer.getString("id");
-    JsonArray contracts = getContracts(customerId);
-    JsonArray communications = getCommunications(customerId);
+    Contract[] contracts = getContracts(customer);
+    Communication[] communications = getCommunications(customer);
 
-    return joiner.join(customer,
+    return createOverview(
+        customer,
         contracts,
         communications);
   }
 
-  private void auditLog(JsonObject c) {
-    getLogger("AUDIT")
-        .log(FINEST, "Customer {0} retrieved [{1}]",
-            new Object[]{c.getString("id"), c});
-  }
-
-
-  //////////////////////////////////////////////////
-  private JsonObject getCustomerInfo(final String username) {
+  private Customer getCustomerInfo(final String username) {
     return backendServices
         .path("customers")
         .path("{username}")
         .resolveTemplate("username", username)
-        .request().get(JsonObject.class);
+        .request().get(Customer.class);
   }
 
-  private JsonArray getContracts(final String customerId) {
-    String path = "contracts";
-    return backendServices
-        .path(path)
-        .path(customerId)
-        .request()
-        .get(JsonArray.class);
+  private Contract[] getContracts(Customer customer) {
+    return backendServices.path("contracts").path(customer.id)
+        .request().get(Contract[].class);
   }
 
-  private JsonArray getCommunications(final String customerId) {
-    String path = "communications";
-    return backendServices
-        .path(path)
-        .path(customerId)
-        .request()
-        .get(JsonArray.class);
+  private Communication[] getCommunications(Customer customer) {
+    return backendServices.path("communications").path(customer.id)
+        .request().get(Communication[].class);
   }
+
+  //////////////////////////////////////////////////
+  private void auditLog(Customer c) {
+    getLogger("AUDIT")
+        .log(FINEST, "Customer {0} retrieved [{1}]",
+            new Object[]{c.id, c});
+  }
+
+  public CustomerOverview createOverview(Customer customer, Contract[] contracts, Communication[] communications) {
+    CustomerOverview overview = new CustomerOverview();
+    overview.customer = customer;
+    overview.contracts = contracts;
+    overview.communications = communications;
+    overview.retrievalTimestamp = now();
+    return overview;
+  }
+
 }
