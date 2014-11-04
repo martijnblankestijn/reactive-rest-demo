@@ -26,7 +26,6 @@ public class DemoOverviewResource {
       @PathParam("username") String username) {
 
     Customer customer = getCustomerInfo(username);
-    auditLog(customer);
 
     Contract[] contracts = getContracts(customer);
     Communication[] communications = getCommunications(customer);
@@ -38,31 +37,28 @@ public class DemoOverviewResource {
   }
 
   private Customer getCustomerInfo(final String username) {
-    return backendServices
-        .path("customers")
-        .path("{username}")
-        .resolveTemplate("username", username)
-        .request().get(Customer.class);
+    return backendServices.path("customers").path(username)
+        .request()
+        .get(Customer.class);
   }
 
   private Contract[] getContracts(Customer customer) {
-    return backendServices.path("contracts").path(customer.id)
-        .request().get(Contract[].class);
+    String path = "contracts";
+
+    return backendServices.path(path).path(customer.id)
+        .request()
+        .get(Contract[].class);
   }
 
   private Communication[] getCommunications(Customer customer) {
-    return backendServices.path("communications").path(customer.id)
-        .request().get(Communication[].class);
+    String path = "communications";
+
+    return backendServices.path(path).path(customer.id)
+        .request()
+        .get(Communication[].class);
   }
 
-  //////////////////////////////////////////////////
-  private void auditLog(Customer c) {
-    getLogger("AUDIT")
-        .log(FINEST, "Customer {0} retrieved [{1}]",
-            new Object[]{c.id, c});
-  }
-
-  public CustomerOverview createOverview(Customer customer, Contract[] contracts, Communication[] communications) {
+  private CustomerOverview createOverview(Customer customer, Contract[] contracts, Communication[] communications) {
     CustomerOverview overview = new CustomerOverview();
     overview.customer = customer;
     overview.contracts = contracts;
@@ -70,5 +66,4 @@ public class DemoOverviewResource {
     overview.retrievalTimestamp = now();
     return overview;
   }
-
 }
