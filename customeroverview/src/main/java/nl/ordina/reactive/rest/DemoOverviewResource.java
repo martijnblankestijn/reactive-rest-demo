@@ -5,35 +5,53 @@ import nl.ordina.reactive.rest.domain.Contract;
 import nl.ordina.reactive.rest.domain.Customer;
 import nl.ordina.reactive.rest.domain.CustomerOverview;
 
+import javax.annotation.Resource;
+import javax.enterprise.concurrent.ManagedExecutorService;
 import javax.inject.Inject;
-import javax.ws.rs.GET;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
+import javax.ws.rs.*;
+import javax.ws.rs.client.InvocationCallback;
 import javax.ws.rs.client.WebTarget;
+import javax.ws.rs.container.AsyncResponse;
+import javax.ws.rs.container.Suspended;
+import javax.ws.rs.core.Response;
+
+import java.util.concurrent.*;
 
 import static java.time.LocalDateTime.now;
+import static java.util.concurrent.CompletableFuture.supplyAsync;
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.logging.Level.FINEST;
 import static java.util.logging.Logger.getLogger;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
+import static javax.ws.rs.core.Response.Status.SERVICE_UNAVAILABLE;
 
 @Path("customers")
 public class DemoOverviewResource {
   @Inject WebTarget backendServices;
+  @Resource ManagedExecutorService executor;
 
   @GET @Path("{username}") @Produces(APPLICATION_JSON)
-  public CustomerOverview retrieve(
-      @PathParam("username") String username) {
+  public void retrieve(
+      @Suspended AsyncResponse response,
+      @PathParam("username") String username) throws InterruptedException, ExecutionException, TimeoutException {
 
-    Customer customer = getCustomerInfo(username);
+    CompletableFuture<Customer> customerFuture = supplyAsync(() -> getCustomerInfo(username), executor);
 
-    Contract[] contracts = getContracts(customer);
-    Communication[] communications = getCommunications(customer);
+    CompletableFuture<Contract[]> contractFuture = customerFuture.thenComposeAsync(this::getContracts, executor);
+    CompletableFuture<Communication[]> commFuture = customerFuture.thenComposeAsync(this::getCommunications, executor);
 
-    return createOverview(
-        customer,
-        contracts,
-        communications);
+    customerFuture
+        .thenApplyAsync(CustomerOverview::new, executor)
+        .thenCombineAsync(contractFuture, CustomerOverview::add, executor)
+        .thenCombineAsync(commFuture, CustomerOverview::add, executor)
+        .whenCompleteAsync(
+            (overview, throwable) -> {
+              boolean b = overview == null ? response.resume(throwable) : response.resume(overview);
+            }
+        );
+
+    response.setTimeout(1, SECONDS);
+    response.setTimeoutHandler(r -> r.resume(new WebApplicationException(SERVICE_UNAVAILABLE)));
   }
 
   private Customer getCustomerInfo(final String username) {
@@ -42,20 +60,44 @@ public class DemoOverviewResource {
         .get(Customer.class);
   }
 
-  private Contract[] getContracts(Customer customer) {
+  private CompletableFuture<Contract[]> getContracts(Customer customer) {
     String path = "contracts";
 
-    return backendServices.path(path).path(customer.id)
-        .request()
-        .get(Contract[].class);
+    CompletableFuture cf = new CompletableFuture();
+
+    backendServices.path(path).path(customer.id)
+            .request().async()
+            .get(new InvocationCallback<Contract[]>() {
+              @Override public void completed(Contract[] contracts) {
+                cf.complete(contracts);
+              }
+
+              @Override public void failed(Throwable throwable) {
+                    cf.completeExceptionally(throwable);
+              }
+            });
+
+    return cf;
   }
 
-  private Communication[] getCommunications(Customer customer) {
+  private CompletableFuture<Communication[]> getCommunications(Customer customer) {
     String path = "communications";
 
-    return backendServices.path(path).path(customer.id)
-        .request()
-        .get(Communication[].class);
+    CompletableFuture cf = new CompletableFuture();
+
+    backendServices.path(path).path(customer.id)
+        .request().async()
+        .get(new InvocationCallback<Communication[]>() {
+          @Override public void completed(Communication[] contracts) {
+            cf.complete(contracts);
+          }
+
+          @Override public void failed(Throwable throwable) {
+            cf.completeExceptionally(throwable);
+          }
+        });
+
+    return cf;
   }
 
   private CustomerOverview createOverview(Customer customer, Contract[] contracts, Communication[] communications) {
