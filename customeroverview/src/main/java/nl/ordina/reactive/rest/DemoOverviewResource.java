@@ -35,7 +35,11 @@ public class DemoOverviewResource {
       @Suspended AsyncResponse response,
       @PathParam("username") String username) throws InterruptedException, ExecutionException, TimeoutException {
 
-    CompletableFuture<Customer> customerFuture = supplyAsync(() -> getCustomerInfo(username), executor);
+    // The asynchronous call to get the customer is extra
+    // in comparison to the demo in the presentation
+    CompletableFuture<Customer> customerFuture =
+        CompletableFuture.completedFuture(username)
+            .thenComposeAsync(this::getCustomerInfo, executor);
 
     CompletableFuture<Contract[]> contractFuture = customerFuture.thenComposeAsync(this::getContracts, executor);
     CompletableFuture<Communication[]> commFuture = customerFuture.thenComposeAsync(this::getCommunications, executor);
@@ -51,13 +55,26 @@ public class DemoOverviewResource {
         );
 
     response.setTimeout(1, SECONDS);
-    response.setTimeoutHandler(r -> r.resume(new WebApplicationException(SERVICE_UNAVAILABLE)));
+    response.setTimeoutHandler(
+        r -> r.resume(new WebApplicationException(SERVICE_UNAVAILABLE)));
   }
 
-  private Customer getCustomerInfo(final String username) {
-    return backendServices.path("customers").path(username)
-        .request()
-        .get(Customer.class);
+  private CompletableFuture<Customer> getCustomerInfo(final String username) {
+    CompletableFuture cf = new CompletableFuture();
+
+    backendServices.path("customers").path(username)
+        .request().async()
+        .get(new InvocationCallback<Customer>() {
+          @Override public void completed(Customer customer) {
+            cf.complete(customer);
+          }
+
+          @Override public void failed(Throwable throwable) {
+            cf.completeExceptionally(throwable);
+          }
+        });
+
+    return cf;
   }
 
   private CompletableFuture<Contract[]> getContracts(Customer customer) {
@@ -66,16 +83,16 @@ public class DemoOverviewResource {
     CompletableFuture cf = new CompletableFuture();
 
     backendServices.path(path).path(customer.id)
-            .request().async()
-            .get(new InvocationCallback<Contract[]>() {
-              @Override public void completed(Contract[] contracts) {
-                cf.complete(contracts);
-              }
+        .request().async()
+        .get(new InvocationCallback<Contract[]>() {
+          @Override public void completed(Contract[] contracts) {
+            cf.complete(contracts);
+          }
 
-              @Override public void failed(Throwable throwable) {
-                    cf.completeExceptionally(throwable);
-              }
-            });
+          @Override public void failed(Throwable throwable) {
+            cf.completeExceptionally(throwable);
+          }
+        });
 
     return cf;
   }
