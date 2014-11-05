@@ -43,4 +43,12 @@ public class CustomerOverview {
   }
 
 
+  public CustomerOverview add(Contract[] contracts) {
+    return new CustomerOverview(this, contracts);
+  }
+
+  public CustomerOverview add(Communication[] communications) {
+    return new CustomerOverview(this, communications);
+  }
+
 }
